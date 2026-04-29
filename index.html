@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corn EONR Calculator</title>
+<meta name="description" content="Economic Optimum Nitrogen Rate calculator for corn using quadratic-plateau model.">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --dk:#0A2215;--dkm:#163D26;--gr:#1E6B3A;--grl:#2E9050;--grp:#EAF5EE;
+  --ye:#F5C518;--yel:#FFD84D;--yep:#FFFBE6;
+  --cr:#F6FBF7;--tx:#0A1F11;--tm:#2A4A35;--tl:#5A856A;
+  --bd:#C0D8C6;--bg:#E8F3EB;--wh:#fff;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow-x:hidden;}
+body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--tx);font-size:12px;line-height:1.4;}
+
+/* ── HEADER ── */
+header{
+  background:linear-gradient(180deg,#071A0F 0%,#0E4020 50%,#157830 100%);
+  position:relative;overflow:hidden;padding:10px 14px 8px;
+}
+.hfield{position:absolute;inset:0;width:100%;height:100%;opacity:0.28;pointer-events:none;}
+.hovl{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.5) 0%,rgba(0,0,0,0.1) 100%);}
+.hinner{position:relative;z-index:2;max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.htitle{display:flex;align-items:center;gap:10px;}
+.hbadge{background:var(--ye);color:var(--dk);font-size:8px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap;}
+h1{font-family:'Playfair Display',serif;font-size:clamp(16px,2.5vw,22px);font-weight:900;color:#fff;line-height:1.1;text-shadow:0 2px 8px rgba(0,0,0,0.5);}
+h1 em{color:var(--ye);font-style:normal;}
+.hsub{color:rgba(255,255,255,0.5);font-size:10px;margin-top:1px;}
+.hpills{display:flex;gap:5px;flex-wrap:wrap;}
+.hpill{background:rgba(245,197,24,0.15);border:1px solid rgba(245,197,24,0.3);color:var(--yel);font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;}
+
+/* ── OUTER GRID: left col | center | right col ── */
+.app{
+  max-width:1200px;margin:0 auto;
+  display:grid;
+  grid-template-columns:188px 1fr 188px;
+  grid-template-rows:auto;
+  gap:7px;
+  padding:7px 10px 4px;
+}
+
+/* ── PANEL CARDS ── */
+.panel{background:var(--wh);border:1px solid var(--bd);border-radius:7px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+.ptitle{font-size:9px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;color:var(--tl);margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--bd);}
+
+/* ── LEFT COLUMN ── */
+.col-left{display:flex;flex-direction:column;gap:6px;}
+
+/* Unit toggles */
+.usub{font-size:8.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--tl);margin:5px 0 3px;}
+.usub:first-of-type{margin-top:0;}
+.utog{display:flex;border:1px solid var(--bd);border-radius:4px;overflow:hidden;}
+.ubtn{flex:1;padding:4px 2px;background:var(--cr);border:none;cursor:pointer;color:var(--tm);font-size:9px;font-weight:500;font-family:inherit;transition:all 0.12s;text-align:center;line-height:1.25;}
+.ubtn:not(:last-child){border-right:1px solid var(--bd);}
+.ubtn.on{background:var(--dk);color:var(--ye);font-weight:700;}
+.ubtn:hover:not(.on){background:var(--grp);}
+.ubtn small{display:block;font-size:7.5px;opacity:0.6;}
+.convbox{margin-top:5px;padding:4px 7px;background:var(--yep);border:1px solid rgba(245,197,24,0.28);border-radius:3px;font-size:9px;color:var(--tm);line-height:1.4;}
+
+/* Data table */
+.drow{display:grid;grid-template-columns:1fr 1fr 16px;gap:3px;align-items:center;padding:3px 1px;border-bottom:1px solid var(--bd);font-size:11px;}
+.drow:last-child{border-bottom:none;}
+.drow:hover{background:var(--grp);border-radius:3px;}
+.drow span{color:var(--tm);font-variant-numeric:tabular-nums;}
+.drow span:first-child{color:var(--tl);font-size:10px;}
+.bdel{background:none;border:none;cursor:pointer;color:var(--tl);font-size:12px;line-height:1;padding:1px;border-radius:2px;transition:color 0.1s;}
+.bdel:hover{color:#C0392B;}
+.addrow{display:grid;grid-template-columns:1fr 1fr auto;gap:4px;margin-top:6px;}
+input[type=number]{border:1px solid var(--bd);border-radius:3px;padding:4px 5px;width:100%;color:var(--tx);background:var(--cr);font-family:inherit;font-size:11px;}
+input[type=number]:focus{outline:none;border-color:var(--ye);background:var(--wh);box-shadow:0 0 0 2px rgba(245,197,24,0.12);}
+.badd{background:var(--gr);color:#fff;border:none;border-radius:3px;padding:4px 8px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;transition:background 0.12s;}
+.badd:hover{background:var(--grl);}
+.breset{background:none;border:1px solid var(--bd);border-radius:3px;color:var(--tl);font-size:10px;padding:3px 7px;cursor:pointer;margin-top:5px;width:100%;font-family:inherit;transition:all 0.12s;}
+.breset:hover{border-color:var(--gr);color:var(--gr);}
+
+/* Sliders */
+.srow{display:flex;flex-direction:column;gap:2px;margin-bottom:8px;}
+.srow:last-child{margin-bottom:0;}
+.slbl{display:flex;justify-content:space-between;font-size:10.5px;}
+.slbl span:first-child{color:var(--tm);}
+.slbl span:last-child{font-weight:700;color:var(--tx);}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:linear-gradient(to right,var(--ye) 0%,var(--ye) var(--pct,30%),var(--bd) var(--pct,30%),var(--bd) 100%);cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--dk);border:2px solid var(--ye);cursor:pointer;}
+input[type=range]:focus{outline:none;}
+.rpill{margin-top:6px;padding:4px 8px;background:var(--yep);border:1px solid rgba(245,197,24,0.28);border-radius:4px;font-size:10px;color:var(--tm);display:flex;justify-content:space-between;align-items:center;}
+.rpill strong{color:var(--gr);font-size:11px;}
+
+/* ── CENTER COLUMN ── */
+.col-center{display:flex;flex-direction:column;gap:6px;}
+
+/* Stats row */
+.stats4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.sc{background:var(--wh);border:1px solid var(--bd);border-radius:6px;padding:7px 8px;text-align:center;}
+.sc.hy{background:var(--dk);border:2px solid var(--ye);}
+.sc.hg{background:var(--gr);border-color:var(--gr);}
+.sl{font-size:8.5px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--tl);margin-bottom:2px;}
+.sc.hy .sl{color:rgba(255,255,255,0.4);}
+.sc.hg .sl{color:rgba(255,255,255,0.5);}
+.sv{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--tx);line-height:1;}
+.sc.hy .sv{color:var(--ye);}
+.sc.hg .sv{color:#fff;}
+.su{font-size:8.5px;color:var(--tl);margin-top:1px;}
+.sc.hy .su{color:rgba(255,255,255,0.3);}
+.sc.hg .su{color:rgba(255,255,255,0.45);}
+.sci{font-size:8px;color:var(--yel);margin-top:1px;font-weight:500;}
+
+/* Chart */
+.chart-panel{padding:8px 10px 6px;}
+.chart-wrap{position:relative;width:100%;height:220px;}
+.warn{display:none;padding:5px 10px;background:var(--yep);border-left:3px solid var(--ye);border-radius:0 3px 3px 0;font-size:11px;color:#7D6008;margin-bottom:6px;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--tm);padding:4px 0 0;}
+.li{display:flex;align-items:center;gap:3px;}
+.ld{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.ll{width:14px;height:2px;flex-shrink:0;}
+.lh{width:14px;height:0;border-top:2px dashed currentColor;flex-shrink:0;}
+.mbar{font-size:10px;color:var(--tl);padding:4px 2px 0;display:flex;gap:8px;flex-wrap:wrap;}
+.mbar strong{color:var(--tm);}
+
+/* ── RIGHT COLUMN ── */
+.col-right{display:flex;flex-direction:column;gap:6px;}
+
+/* ── AUTHOR CARD ── */
+.author-wrap{grid-column:1/-1;}
+.acard{
+  background:linear-gradient(135deg,var(--dkm) 0%,var(--dk) 100%);
+  border:1px solid rgba(245,197,24,0.2);border-radius:7px;
+  padding:10px 16px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 1px 6px rgba(0,0,0,0.1);
+}
+.aphoto{width:54px;height:54px;border-radius:50%;object-fit:cover;border:2.5px solid var(--ye);box-shadow:0 0 0 2px rgba(245,197,24,0.18);flex-shrink:0;}
+.afb{width:54px;height:54px;border-radius:50%;background:var(--dkm);border:2.5px solid var(--ye);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.ainfo{flex:1;min-width:0;}
+.aname{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#fff;margin-bottom:1px;}
+.acred{font-size:10px;color:var(--ye);font-weight:600;margin-bottom:1px;}
+.ainst{font-size:9.5px;color:rgba(255,255,255,0.45);line-height:1.4;margin-bottom:5px;}
+.atags{display:flex;flex-wrap:wrap;gap:3px;}
+.atag{font-size:8.5px;padding:1px 7px;border-radius:10px;background:rgba(245,197,24,0.1);color:var(--yel);border:1px solid rgba(245,197,24,0.2);white-space:nowrap;font-weight:500;}
+.alink{display:flex;align-items:center;gap:5px;background:rgba(245,197,24,0.12);border:1px solid rgba(245,197,24,0.28);border-radius:5px;padding:5px 12px;color:var(--ye);font-size:11px;font-weight:600;text-decoration:none;transition:background 0.13s;white-space:nowrap;flex-shrink:0;}
+.alink:hover{background:rgba(245,197,24,0.22);}
+
+/* ── FOOTER ── */
+footer{text-align:center;padding:4px 10px 8px;font-size:9.5px;color:var(--tl);border-top:1px solid var(--bd);max-width:1200px;margin:0 auto;}
+footer a{color:var(--gr);font-weight:600;text-decoration:none;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <svg class="hfield" viewBox="0 0 1200 70" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a3d1a"/><stop offset="100%" stop-color="#1a9940"/></linearGradient></defs>
+    <rect width="1200" height="70" fill="url(#sg)"/>
+    <g id="s"><line x1="0" y1="70" x2="0" y2="22" stroke="#2ecc71" stroke-width="2.5"/>
+      <path d="M0,52 Q-14,42 -20,34" stroke="#27ae60" stroke-width="2" fill="none"/>
+      <path d="M0,52 Q14,42 20,34" stroke="#27ae60" stroke-width="2" fill="none"/>
+      <path d="M0,36 Q-12,28 -17,20" stroke="#2ecc71" stroke-width="1.5" fill="none"/>
+      <path d="M0,36 Q12,28 17,20" stroke="#2ecc71" stroke-width="1.5" fill="none"/>
+      <rect x="-3" y="32" width="6" height="12" rx="2" fill="#F5C518" opacity="0.65"/>
+      <line x1="0" y1="22" x2="-4" y2="13" stroke="#a8d5a2" stroke-width="1"/>
+      <line x1="0" y1="22" x2="0" y2="12" stroke="#a8d5a2" stroke-width="1"/>
+      <line x1="0" y1="22" x2="4" y2="13" stroke="#a8d5a2" stroke-width="1"/>
+    </g>
+    <use href="#s" transform="translate(35,0)"/><use href="#s" transform="translate(70,0)"/><use href="#s" transform="translate(105,0)"/>
+    <use href="#s" transform="translate(140,0)"/><use href="#s" transform="translate(175,0)"/><use href="#s" transform="translate(210,0)"/>
+    <use href="#s" transform="translate(245,0)"/><use href="#s" transform="translate(280,0)"/><use href="#s" transform="translate(315,0)"/>
+    <use href="#s" transform="translate(350,0)"/><use href="#s" transform="translate(385,0)"/><use href="#s" transform="translate(420,0)"/>
+    <use href="#s" transform="translate(455,0)"/><use href="#s" transform="translate(490,0)"/><use href="#s" transform="translate(525,0)"/>
+    <use href="#s" transform="translate(560,0)"/><use href="#s" transform="translate(595,0)"/><use href="#s" transform="translate(630,0)"/>
+    <use href="#s" transform="translate(665,0)"/><use href="#s" transform="translate(700,0)"/><use href="#s" transform="translate(735,0)"/>
+    <use href="#s" transform="translate(770,0)"/><use href="#s" transform="translate(805,0)"/><use href="#s" transform="translate(840,0)"/>
+    <use href="#s" transform="translate(875,0)"/><use href="#s" transform="translate(910,0)"/><use href="#s" transform="translate(945,0)"/>
+    <use href="#s" transform="translate(980,0)"/><use href="#s" transform="translate(1015,0)"/><use href="#s" transform="translate(1050,0)"/>
+    <use href="#s" transform="translate(1085,0)"/><use href="#s" transform="translate(1120,0)"/><use href="#s" transform="translate(1155,0)"/>
+    <use href="#s" transform="translate(1190,0)"/>
+    <rect x="0" y="64" width="1200" height="6" fill="#071a0f" opacity="0.5"/>
+  </svg>
+  <div class="hovl"></div>
+  <div class="hinner">
+    <div class="htitle">
+      <div class="hbadge">🌽 Free Tool</div>
+      <div>
+        <h1>Corn <em>EONR</em> Calculator</h1>
+        <div class="hsub">Economic Optimum Nitrogen Rate · Quadratic-Plateau Model · Live Updates</div>
+      </div>
+    </div>
+    <div class="hpills">
+      <span class="hpill">QP Model</span>
+      <span class="hpill">95% CI</span>
+      <span class="hpill">4 Yield Units</span>
+      <span class="hpill">Metric / Imperial</span>
+    </div>
+  </div>
+</header>
+
+<!-- APP GRID -->
+<div class="app">
+
+  <!-- ── LEFT COL ── -->
+  <div class="col-left">
+
+    <!-- Units -->
+    <div class="panel">
+      <div class="ptitle">Units</div>
+      <div class="usub">Yield</div>
+      <div class="utog" id="ytog">
+        <button class="ubtn on" data-yu="bu_ac" onclick="setY('bu_ac')">bu/ac<small>bushels/acre</small></button>
+        <button class="ubtn"    data-yu="Mg_ha" onclick="setY('Mg_ha')">Mg/ha<small>metric ton/ha</small></button>
+        <button class="ubtn"    data-yu="t_ac"  onclick="setY('t_ac')">t/ac<small>short ton/ac</small></button>
+        <button class="ubtn"    data-yu="kg_ha" onclick="setY('kg_ha')">kg/ha<small>kg/hectare</small></button>
+      </div>
+      <div class="usub">N Rate</div>
+      <div class="utog" id="ntog">
+        <button class="ubtn on" data-nu="lb_ac" onclick="setN('lb_ac')">lb N/ac<small>lbs/acre</small></button>
+        <button class="ubtn"    data-nu="kg_ha" onclick="setN('kg_ha')">kg N/ha<small>kg/hectare</small></button>
+      </div>
+      <div class="convbox" id="convbox"></div>
+    </div>
+
+    <!-- Data -->
+    <div class="panel" style="flex:1;">
+      <div class="ptitle">Yield Response Data</div>
+      <div id="dtable"></div>
+      <div class="addrow">
+        <input type="number" id="nn" placeholder="N rate" min="0" step="1">
+        <input type="number" id="ny" placeholder="Yield"  min="0" step="1">
+        <button class="badd" onclick="addPt()">+</button>
+      </div>
+      <button class="breset" onclick="resetD()">↺ Reset</button>
+    </div>
+
+  </div>
+
+  <!-- ── CENTER COL ── -->
+  <div class="col-center">
+
+    <!-- 4 stat cards -->
+    <div class="stats4">
+      <div class="sc hy">
+        <div class="sl">EONR</div>
+        <div class="sv" id="s-eonr">—</div>
+        <div class="su" id="s-eu">lb N/ac</div>
+        <div class="sci" id="s-ci"></div>
+      </div>
+      <div class="sc hg">
+        <div class="sl">Yield @ EONR</div>
+        <div class="sv" id="s-ye">—</div>
+        <div class="su" id="s-yu">bu/ac</div>
+      </div>
+      <div class="sc">
+        <div class="sl">AONR</div>
+        <div class="sv" id="s-aonr">—</div>
+        <div class="su" id="s-au">lb N/ac</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Plateau Yield</div>
+        <div class="sv" id="s-plat">—</div>
+        <div class="su" id="s-pu">bu/ac</div>
+      </div>
+    </div>
+
+    <!-- Warning -->
+    <div class="warn" id="warn"></div>
+
+    <!-- Chart -->
+    <div class="panel chart-panel" style="flex:1;">
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      <div class="legend">
+        <div class="li"><div class="ll" style="background:#1E6B3A;height:2.5px;"></div><span>QP curve</span></div>
+        <div class="li"><div class="ld" style="background:#fff;border:1.5px solid #0A2215;"></div><span>Observed</span></div>
+        <div class="li"><div class="ld" style="background:#F5C518;border:1px solid #0A2215;"></div><span>EONR pt</span></div>
+        <div class="li"><div class="lh" style="color:#D4A800;"></div><span>EONR</span></div>
+        <div class="li"><div class="lh" style="color:#6B8F71;"></div><span>AONR</span></div>
+        <div class="li"><div style="width:14px;height:8px;background:rgba(245,197,24,0.12);border:1px solid rgba(245,197,24,0.3);border-radius:1px;flex-shrink:0;"></div><span>95% CI</span></div>
+      </div>
+      <div class="mbar">
+        <span>R²=<strong id="r2">—</strong></span>
+        <span>a=<strong id="ca">—</strong></span>
+        <span>b=<strong id="cb">—</strong></span>
+        <span>c=<strong id="cc">—</strong></span>
+        <span style="font-style:italic;color:var(--tl)">(metric)</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT COL ── -->
+  <div class="col-right">
+
+    <!-- Prices -->
+    <div class="panel">
+      <div class="ptitle">Economic Parameters</div>
+      <div class="srow">
+        <div class="slbl"><span id="npl">N price ($/lb N)</span><span id="npo">$0.55</span></div>
+        <input type="range" id="np" min="0.05" max="2.50" step="0.01" value="0.55" oninput="updS(this,+this.min,+this.max);upd()">
+      </div>
+      <div class="srow">
+        <div class="slbl"><span id="cpl">Crop price ($/bu)</span><span id="cpo">$4.50</span></div>
+        <input type="range" id="cp" min="1" max="10" step="0.05" value="4.50" oninput="updS(this,+this.min,+this.max);upd()">
+      </div>
+      <div class="rpill"><span>Price ratio</span><strong id="pr">—</strong></div>
+    </div>
+
+    <!-- How to use -->
+    <div class="panel">
+      <div class="ptitle">How to use</div>
+      <div style="font-size:10.5px;color:var(--tm);line-height:1.6;">
+        <p>① Pick <strong>units</strong> (left panel)</p>
+        <p>② Edit <strong>data table</strong> — add N rate &amp; yield pairs</p>
+        <p>③ Slide <strong>N &amp; crop prices</strong> to current market</p>
+        <p>④ Read <strong>EONR</strong> live above the curve</p>
+        <hr style="border:none;border-top:1px solid var(--bd);margin:6px 0;">
+        <p style="font-size:9.5px;color:var(--tl);"><strong>EONR</strong> = max profit N rate<br><strong>AONR</strong> = max yield N rate<br>EONR ≤ AONR always</p>
+      </div>
+    </div>
+
+    <!-- Scenario tips -->
+    <div class="panel" style="background:var(--yep);border-color:rgba(245,197,24,0.3);">
+      <div class="ptitle" style="color:#856404;border-color:rgba(245,197,24,0.25);">💡 Scenarios</div>
+      <div style="font-size:10px;color:#7D6008;line-height:1.6;">
+        <p><strong>↑ N price →</strong> EONR moves left</p>
+        <p><strong>↑ Corn price →</strong> EONR → AONR</p>
+        <p><strong>Drought year →</strong> remove high-N points</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── AUTHOR — full width ── -->
+  <div class="author-wrap">
+    <div class="acard">
+      <img class="aphoto" id="aimg" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wAARCADIAMgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDxHVIAFPORXMSxESHHStm6vd64JJrNdgWzWcn2JSsEKYxVkMAOapGTa3WpopPNYKOc1zTTAvWMbXU4QdBXS2ukjA+WqvhnTCbjce4ru4NPRU5HNbQopq7Fe7OetIPLk2sOBWxHYQ3BClAc0wWwa7PHGa63RrG2d13qpNaQpJ7lTk4o5i40GKNcquDXN6pB5Eu2vWdT063SMucKB74ArzDX7zTPtbOLqN414JVgcn0GKwr4PmfuEwn3M20hMpJGOPWtBooo4yZXCAetc/Nr8QuH+zx5h6DLEHHvSNdxyZhug8Lk5UDHzd8Z9fyrpoYVQjZ6kzSbNIazYwSCN2ZC/Cu64Un61djvYldd5wD0I5B9q5m7uk2ZliW7twPmOPufUHJBp+nyWtu3mRjdBJhdu89Cen8sZrT6vTelhcqOxXUbOJVZ5xtJxu/hH19KqaoCzYU/KeciuLl1kxXE0EjneB+7lAwWGeM+p9/wPSrOleIpLb/RZpE2g/Jxxg+3YfyrmrYOEvh3NI+Z0VtE5P3easSWjgFjUWm65bzXUELqAkp8vJHKsen4Hpn3reuYQiYxXBUwklubxjG10c+I2QgjNJPIVXJq3JjfimyW6yrWCTjuc80mzAmmJekLMwxV65sgO1VdmwkYo57goWWpEGaMUDdI3TFPkXili4rSLuZ1NNi1bRgEA9KKEfiilczszjBljTXGKcjY61HM4r1DsaK8jc1a0xx9qQHuaoO2TVvSyBdx7umadkKx6j4Ztstn2rqZGCDb6CuX8OT7E9q17y62scHtWy0RC3IVuAl2c9M11ui3UJZcsM1wIuC0m7PetvSr8JICT2ohIqpqZ3xj8T3KS2ujWMu2KRS9wVOCxGML9MdfrivMnv7wR4tncbOW4BC/4Vr/ABMvRc+LCFkLeXCisc/xckgDt1Fc/bXkA+Q2xZj05x/KrTJSsjThuLmNzLc3BEsgB3HBR89M9aLjUmkY29/AAcY4G0j6diPaqgE7c7EkiPVWbJ/A+tSQ6ZdXoEUMUsidkbnH09KpysCiVhdyWc4KyCSPplhzj+6w9KkiZPm+znbG+TsJ+76itdPh7r0se9bOVh9OQKgk8C61bna1pIuD0IrJzNVTZi3UgclyoEiHnI98n8DVWdh5jKhPB+Q+x7V0svhPURGHNs5OcNkVn3WgXMbFPKYNtBx6VPPcORooWepzQhjk71wVPoQQf6V67baiuraZBeKu3zUyRnOD3rx+Wwljm2bG6c8V6H4WuANFEW0K0fBx396zqv3Wxx0di3L8shNJ9p2jGKbJICxqMYP1rwZTbZXs1uhZG35qnLGOtW2IVcE1VkceuTSiOSViAxluSKZsYHIqzHycGpxAH6VsmcUnYpqxFFXRYgjNFFhqRwl5+5kIHSqbvmr+pLmU+1Z7LXs2N1sR9TVi1VjKgXrmoehq3pnN2vFMD0fw8P3IBznFXNQLxnIJIpvhyNXh3Z5qzqERZz6Vo9jK92ZKymp4LhlkBziqSsRLs5xmtK0thK/bFREc3ocj4r00vqz3gkBMyLkHscY4rCmsCiqVyS3p/Kuv8XRmC7i4GSoxz71l6Wi3er2lv94Fwcew5rZ2UbhC7Ok8DfDn+1I47i8VgGH3T0Ar3Dwt4M0TSIUBUNIB1wKy/Dtn5dooVNq/w/Surs9La6HDmPjBPevOdWVz1Y0YpF6S1sY1CoqbfTiq09haOQxiQj121o22gwxLhpXfHcmnnTkYHbTuyrIwW0/S3yjxRH2xXEeKfBlhdGR7barE5xXpM+hwZJZwCaxtS0lIMlTnd29qlzkh8kWfOmqaDNpdw3mwlM5APrS6WVgcxjI38dOCK9E+IljjRnkVfmiO8H0NeV6bfGaWNs4JbH612UpqpTcWefXp8ktDYdsORSB8UOCXNNA55rxXRd9DNVrBKxfqaaIs81LHHubmrYhULmlKm4oh1OZmVKSh7+1SWk7Z5FS3EAZsCp7eyGBUrUcrIs25z1FFSQqIuKKtQZk2ed6ioM7Y6VnunWtO7G6Qn3qq0dew2bx2KBU5rR0SHfdZ9BVdo61NAi3Tt+FNAzvvDsW2PPvWncRAhiKr6HaEQ53irso2q2a1exnBXZzbRhJenNaGmZ8wjtTDbGWQ7R0q7p1hMSxx9KmCCsrHLePwYruzOPllUqT+NTfCvRDrPiOa5df9Gsxlj6k9BU/xN0ie0i0e5aWCaOcSYaJ920jGVPuK7f4O6Olv4Le524kuriRmPfAOBUV5/u9Dow1NqdpLY2tS+IVloc/2Cws3vr4EKyKpKR/XHU1g698QfHkMQuLbSTbxHuidPrzVPULDUNDu5jp1i0uozSF3ldPkjB788ZrJu4/iBeagsN3cMLN3AMoIwq9yACDnrWdNJLRHRU5m9Wzf8PfFfX5Llf7RDRseqjoa9Cj8V3TWBuUU5xnGOK8aTw7q32vZcZdcnZJkEkduOoz+Nez6RoU3/CGl3X98kZx78VnN6m9NWR5lr3xH11p7lLWSQs67VTP3DnrVbR9Z+IlwjTor7RyTKw+as+48P6pJqTLHP5Ss2ZZeNy/Qdf5VX0/TvF8d40ctyI4EQkMr7t57YwcjP6VrBu3QwqK76nU2vii61WeXRNcsRHcSIcOPuvx0PvXlGoWL+H/Ec1i+diTB1Pqp6V6poGl6rfXMMl9bP5sD5E3Xch7Ejqa5P4qaQw8SWBiXMlxBsOPZ/wDA1NOVpirRbgMUgk02TFWdbSxstVeDTZZZbUKpV5MZJI56ds5xVGT5uRXItGeXOLi3FjllC05r5UXGaoTO4NV2yx5Na+zUtyVoaUdzufk1fS4CDNYkRxirLyHbgVPskmDkzRF4C1FZsTkmitlBAjAuYTG5B5qq4FamqBRJgVmPWu52R2IHWtTw+rNPtUdTWYxrqPBNsk0+WHOacVqJ7Hc6NYXC2wYjipblWVSGHNdTpNiPsoGOMVX1DTYyCNgzWz2IpuzOVt4WZvlGa2tNtJlBYocZ4rS0/SI1xhK6G009Qm0gVUNBVnd6HnWt+FYNQ0K5mmu0tzDcPLGkpwrccge5rsPhD5UXha2t5QNod8/ixqHxPoj3kfkhMwK+6T6Hn+lS+Ao1g0W2KfdLMwHoM15zvGLg+jPXbU5KouqPSJfDK6vBiJyuRjdjP865m5+FV+Jif7QgC+0ByP8Ax7FdLpviFLRAHYf4VleL/iSum2beQVadvlQeppLltca5k7FNPCNloseC3mzN953OWb/AV1GnW7vociCMnAO33rzjTviDoukQbvEEri8uGOHIJ+ldPZfEzSbfTEK3Mbj0zzimlrdmj2sjHfw1a6vI8UihJcn5gcEVDbfCOYzhmvn8vPY1RPxC0S/luoob5YtRVy0aqeR7EVqaF8URKhguSqypwfQ+9JaKzCWvwnQy+HY9C09UiV3AHLE5ryrxSLGXxdp0s8RkTyZFUDoCWXk13+q+OUkh8tZA2fXrXFXq202swXFwuUjtpZjjtjaaN27Gb0tzHnOuRpBq0sCnIiCx59wKgDDFQXF6t7dTTk5Mjs/5monfaMg8VHLY8SrPnm5d2TSgMKpSMEzStckg9qoTT89c1tFWMrFtbinG6K96zhNmguW71pyjsa0NyM5NFZXmlO5op2CxPeD5iaoPWhqHynFZzZppHWtiFhzXTeCmcXPy+tc01dX4HAWXd701uKWx7LpF4yWwB9KknuY2PzEVSsplW359KzL7UdrkCnKrbQwOht7+OMjBFa9tqSMBjFeeJqvzYNbNlqiqV3Ec1pGaYnc624miLeex27kaIttLDBGOQP8AIrnfDEvl6OIB96IlPpW3aahC0fUdK4q01P8As3Wrq0c4QuSvvzWOIhpdHfg6t/dfQ2b67urfc6ufavL9d8XSv4iFvKwHltj5zgD3r1L7ZHcgfdx/KsO68E6Trl7cC6tVcyqG3dG3DuDXNBpOzO6d2tDmr3VLfV7dEN9AoXGPkz/Oss2d6mVttUsSuMqHJG0mvVNDtoNHjS1lFmREyspng4YAHjI+vWtKLTfDk8cJutD0qSSNCHdGAUk85A6/nXWo82xjyz7fiePaTH/ZcqzyvamRgdzEHP0zWVqXiiaLUs2pVwrDJjOQQT+n416h4g8O6LdRPZ2lvYxtIoU/ZlywHOeT06/pVKLwjpWh2EK29vHtDb2YjJdu2azmktwUZeg2wtpLhUkmYlsA4rO8f64dLtPLjUO9zbSW2c42BtuT+Q/Wr8uqLFLkkADoK8+8Zam+rXmFz5cQIHue9Y01rdixM7Qsc/HqHlnBNXYr0SDrxWFLE6sc8VNbblORzW7gjy7G20ylMVQmcEmmySvs6GqjSkdTSSKsSGQg8VMkmBVWM5Oa0ooV8vcRzRKVgVluVHkyetFFwgVs0Urg7M1tSAL1muKu3LlzzVN6pGy2IWHNdB4VufIl69659utXtJkZZgFobtsJ7Hq9vqY8jG7tWdcXgaQ81mWvnvDw3amtBMT941ztOTMrGh5ikg5qdb3aBhsYrMS3l7tQ0En96qXMKx0dvrhjGC3FYniKVrm5FzE48wAEgHmrGh6c010JZ32wxkEkjI/GotH0abUNR8VyS4Mq3MRiOMBl2kggehBFd3smqHtZdXZBQqXr+zj21HaJ4gMuI3bBB7967zQHW9UCN/nXuTya8nu7ZrG537SpzhhR/wAJndaFcpNASFA7Hv3zXK6fM9D01VcVqey654Yvr2HdZk5YcjrmuCm8K+MI7kKi+WrHjpmq8PxsvDHF5chVgTkdMiq918ZLl5dyzn6iqUJIHWi+p2fhzwnqwTffyFB3BwCaZ4pljtVEBcHA9eg9a4iT4y3cEYQSFlwcnrmuZk8Vah4hv2mcsTINoUds1Lpvdi9tHZGnqWpNcTGONiFHBNZUyo3QfhVq8tfsZEOcsqgsfUnmqyYdsd65pT1suhw1puUtTKurYseBRbW4XqMVviw8xckVXmsccAYNNV76GXMjOlUbeBVU2wmJAFbiaYzqABk1Zt9HAILDB70vbJCUjmDpzR8gGnid4l2kcV2EumRGPHQ1my6Im4nGRR9YT3C5zE8pds4wKK27rSo9mAuDRVxrRsUmVZ2xgVVdqklbJqBjXSboYx5rX8O2xubjAHesdq6/wBbie4xjnNVCPM7Et2VzutJ8PvJCDt7Vof8ACME/w11+h6SDbr9K1BpCiuv6vEw9qcAvhYnqKc3hZFUswAAGST2rr9VuLHR4szOGlP3YlPzH/AVxOs+I7i7RolCxxHkqvGfYmu7DZVKtray7nLWx0aem7MzUnD6DN/Z3zp9o2tjqygYJ+mf5Vb0rXba1tYrdk33EagSEcFk649yOSPxFZ2gahDpVxILgg27ReXGO4JOQfr/P8ayJraWw1v7X963Zt/y9COvH5cV6NXDw5PYtaHnQrzVT2ieu/wDwDrNY0O31aH7Rb4O4Z4rgNW8NyRllKZH0rpJ/EF08v23RXV40/wBZbt0Yd/8APY89DWlFqdlrUa7gIbgjmNj8wP8AWvmcTgqmHd46x7/5n0uFxtPERSlpLseR3Ph+ZWJVD+HBqsvh+4Y/LDIa9Wu9HCksoVsfhVeGaws8m5XDDopHWuX2sjq9jE87t/CN1csNylF65NdhoegRWRB2A7R1rS3tdNvRNiHoCKs6jImkaRJMx5VS2fU1Lm5aFKnGOpw2o6wNS+3kJtls5yu8dHjJwM+4Pf0PtWfZXLSSdan8N6bfy6bfP5Of7QQ7N3VsHJI/GrVlpRhOHUg+45rbG0lTjGTW6PJjJSckn1NG1dtlWkszNhiKbbQhMVs2pTaNwFeQXGmmVYbIxkELmp2t+N+MVeXy+qnikco3HFZvcaproZnleYwyPaiaxYcqMitEBF7DFTJNGw24oTsJJHOf2aWf7pNFdJ+6U5Aoquc3jGKR5Eajan5oVSxwB1r17kc1iIg11HgS7+z3mznJPAHereieAXulWbVJWtozyIVH7wj3zwv867HTdM0nQ122FsqSEYMpO5z/AMCP9MV7WDybEVbTl7q89/uPNxGZU4XjHVnc6b4iisbVfNDFscKOtZ2q+N7uUMsTrbL6jk/nXNXMz/eAyh5yDnmsySfe2zOR23Nivo6OXUaXS78zyp4mrU62XkXptQ+0SbzOWY87j1z71UnlM2ARtfvg/wCf8+lVnOYwwzleuBikP7zB3ZbPDen4dxXZfoZKFivdruBDqGU44/lj/P8AU1dg1WGXSX065TzFblZOpUnuP5n14PFQyOpO2dQuc89j/n8z9Kp3FoUYmNmGMk+3qfw/ngdq56tJSNFZ6Mz7Ww1DwrqTXCDzIlw2AflYHuD6n9am1G7g8Qyi705xDcqeYR8vPt7fy+lPe8uUjaF2JUgrsY5x7fmQPzrHSygtbv7THK6YOQMf17//AF68+dCUdFqjqi7vme51dlrptlht7+f9452DzOCTjPXvVu5tEusPtwfX0rjY9EvfGGsWlqHjhO7aZXYbMk5LH8B/Sup1yzvvh9q9lplxex39jPGXE8YPyY4Pc8Zx3P8ASvAxmBu3KmreXc9nCYxpKNR3/Qv21v8AZ18xgSB61j6sy6/M1pLdRwxbWZULYaXHZR396y9b8Y3kymOws2A/56T9PwFcv59xNcC6vZmnuUOI/mGEHsB/kVlhcDJSUqiNcTi04uNN/M6i2mmBSEygpEdqKv3Vx6e1dNDJBeRj7TErnGN3RvzrkdFhZY/Ol+Udga3bSTd1+oFfXUaUJU+Waun0Z85WbUrxepauNGfBksX81epjPDD6etZIu5YXKOCpB5BGCK2DcNEQUYqRVqQ22qR/6TCrkdT0I+hrxcdwzTqNywz5X2e3/A/E2pY+cdJ6oyYr3KYBqJtQIbDHirV1oDKN1jMH9I5OG/A9DXNXrzWsxiuIpInHZxivlcRlmIw0rVo28+n3np4etCprFnRreq6AA81atFZmyDkVz+msZOo49a34JVhGa4ZxOm12aIgYjGKKIL4OBiis0mbKmn1PK1tu5Fdf4Q0BIVXVLlNz/wDLBWHAH9//AArH0ax/tK6CEHyY/mkb29PqeldtLepDCubW5YAAeXEo4/X+VfbZDgOeX1irstvX/gHj5nW5F7KG73JZrkjLNkkngk1DHPvIBK9egFVF1bT5sos0kbDnZKhBFQi7ilkHkSoeOOfvfnX1/OnszxlB9jRmnWNfmb5T1yetZswKOdhBVjlSq80XsjzWx+Uh1yTnoRVeykM9ryckcj61Dld2LjGyuWY/nXOT0OctikZQucOCTyNqmo0JYlmCjcO/P5UjqyqHBY7T6Y4oHYXzCp+bkdOe9IV2jMRKnqFJyvtimO5BGFIUjPJzSHjkHI9jSuOwyd4j8sg8pjwC3T0HP4k1Tmti6/IAynpg9v8A9S1fbbMpRgOfWqctiI8+WZUJPIRhggj0NZzVzSDsc/c2d1CxZNwPXjI54/q1Rq2ot1knbHQFj/ntXQkzjA80nd3eP6en0qIm4dvlaP3GwgDn/wCvXI6CvdXOhVX2MYWNzL/rMrx3NWrexhtTucgmrogm4LMv4D6f4VLFZquCeSO55NONETqElujS7S/yJ2Hr/wDWq+h2MGxgDioI12kMcnFSPnHJ4rqirHNLUttKuw9D2FFvMUYgHqMgYqFG46DOPSpMFXUrwRzmtbkW6FmC4LtlnxzU9w8VzGIbqGOeL0cdPoe1Zk0ggmDZPPOfSpJLhpApBABNErSTjJXJ5WmmiO6sE08CWDcYCcYbkqarPdB+FNasDK8bxS4dHGDisu509rKXBGUPKN/eFfCZ/lSw8vbUl7j/AAf+R7ODxXPHkm9V+IsF28Z60VCcDmivmbnXztFvR7RrDTI1B+eUb346f5FTK7JISx79DVtwFCr0wKqXakjcMcc1+u0qSpU4wj0Pnp1HUk5PqUdYQSKN6b0Pr95foe1VbexMkLR+as8bdEk+VgfZun8q0LeQzRvG3zbhWbLvsZuFBQnkGpmlfmZrBu3KCq+nybRPKr54ikypI/Hr+FO0m8RjKqcbGyB9e1Qai6tGkrZeHIDoTx7Eeh96qWRe11d4y25JEJB/vdwfyrLn5ZJdDTl5ots6KP5mPzc5474qTJbJYMSQc5bFQ2jAuT29aluNu7cAD9RmupbHO97EbqChwEGDxnmkVuy7MnsDSrMrk4KKDngCo92JOWJHsOtSxoeAc8jn2pchxtYduKFbI4VjjvjH41HJknIzn0FAWGSRYH8Ix2zigKGbCj73HLZxSCZujAkY7dqDJkqwA9ORU6FajxGC2MD14oA56Zx3oEh+YbxjPpQpz6EH3p6CJBkdetIB5hA7UDLNUgHGaaJJEAHrgdh1p+/OTyB0qJFDc04PkEZOD1FWSyDUCAscnHPBNK7/ALlDnjPp7Uy+QvaPxjZgiqcc/mWZGSdrdqzlKzNIxujQs5SxO0gD+dXNTbfbCMcsnIP86yrS4VUU7gMcD2NWIW867lDEN8m3I6Z61yY+HtcLUp73TKprlqKXYzpGfcFxmitARLuyeaK/MVY+ijC6NO4bB4PIqu5MkTHjuDilmfDHJ9hVWZzC+0n5ScdK/XWz5aKKcjtbsGDHj1p96ovLXz0+8B8w/rVm/tlki3jpjnmqFrOLaTY4yjcHNYvR2extHVXW5QVjJbzW/VnU7f8AeHI/WkjkW6FjcIu0glW+hBx/WnXafY7whTlT8yn1FVYXFveLEuNhlyoPockfzrmk7OzOlK6ujorT5QWJOBSi6Uk8YJPU1BNcRxW21CQzdaS3A2Bm79c11c3RHNbqyfzPm273yOOAaaWdWZSTjORx+HpTMjPBK4PGOf8AGnM/71gDIeO4HSi4WHqSWzlgQMnP60u7evPJqJjnvLu9cdaVeDgfnRcVhHBzg5596jVnVcDdjP4VLJ93kfjmofXqO/FJlIn3cvgsQR2WkiBbk4A+lRA5I2l+RjH4c96ljwEA+bP6GhMTJQSDjipCMrxioVHf8qnUZHQVaIYwbwfvds80ByM5/Cgtg4PI7UwyqpwR7U7huTZWRGQHO4YxWOmIfOXGCAT+XNXZXIKSLuBHBwKhu4hK/mgZWRSCPQkVnPU0hoUtLn+0JyDgvu/DOa1dMm3TO46Fqw0nFpaLbRriTG12/oPatKxPlRIATuYjisacuhdSO7LxQxyupJGCRRT75tpjkA++uD9RRX53jcL7GvOn2f8Awx71B+0pqfcluWGOuCKqM3nRgMSxA7UUV+mvex83FaE9jL+7MDkHHrWXrEMix5QkFOenWiipnrAqGkymJP7RsCoH76D5l9x3H9azvMX7baMTgFgp/D/9dFFcFR+6n/W52QWrRps5eQYq7Cdo65oorpgYSHKNwPUd+KeH3SgjfnaARkf1oorQzY7IYYO4nOfvDp+dG7DHrn1ooqhDWOMkGmSnAyKKKljQ1XDbVUNu9d3X9akUhIyWDA5xnPbHTrRRSj3G9ydOoBwCOw60/fjgngd6KK0M7CscjI5qrIrIfWiiiWwRDdmPBzVEXRiYjIIY9DRRWM20awRk2y/aLtz0UMenTrWvbSBpgAeE4zRRWFLZGtQ2HBuLUAclWBooor5LiFWxenZHfgZtUreZ/9k=" alt="Sailesh Sigdel"
+           onerror="this.style.display='none';document.getElementById('afb').style.display='flex';">
+      <div class="afb" id="afb" style="display:none;">🌱</div>
+      <div class="ainfo">
+        <div class="aname">Sailesh Sigdel, Ph.D.</div>
+        <div class="acred">Postdoctoral Scholar · Pennsylvania State University</div>
+        <div class="ainst">Soil Scientist | Manure &amp; Nitrogen Management | Sustainable Nutrient Cycling | Agricultural &amp; Environmental Systems Modeling | Circular Bioeconomy | Extension &amp; Outreach</div>
+        <div class="atags">
+          <span class="atag">Soil Science</span><span class="atag">N Management</span><span class="atag">Manure Systems</span>
+          <span class="atag">Nutrient Cycling</span><span class="atag">Ag Systems Modeling</span>
+          <span class="atag">Circular Bioeconomy</span><span class="atag">Extension &amp; Outreach</span>
+        </div>
+      </div>
+      <a class="alink" href="https://www.linkedin.com/in/saileshsigdel/" target="_blank" rel="noopener">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+        LinkedIn
+      </a>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<footer>
+  QP model · 95% CI via delta method · Math in metric ·
+  Developed by <a href="https://www.linkedin.com/in/saileshsigdel/" target="_blank">Sailesh Sigdel, Ph.D.</a> — Penn State ·
+  Not a substitute for professional agronomic advice.
+</footer>
+
+<script>
+const YU={
+  bu_ac:{l:'bu/ac', toM:v=>v*0.0254012,frM:v=>v/0.0254012,pl:'Crop ($/bu)',    mn:1,  mx:10, st:0.05,df:4.50,nt:'1 bu/ac ≈ 0.0254 Mg/ha'},
+  Mg_ha:{l:'Mg/ha', toM:v=>v,           frM:v=>v,           pl:'Crop ($/Mg)',   mn:1,  mx:300,st:1,   df:50,  nt:'Native metric'},
+  t_ac: {l:'t/ac',  toM:v=>v*2.24171,   frM:v=>v/2.24171,  pl:'Crop ($/ton)',  mn:1,  mx:150,st:1,   df:45,  nt:'1 t/ac ≈ 2.24 Mg/ha'},
+  kg_ha:{l:'kg/ha', toM:v=>v/1000,      frM:v=>v*1000,      pl:'Crop ($/1000kg)',mn:1, mx:300,st:1,   df:50,  nt:'1000 kg = 1 Mg/ha'},
+};
+const NU={
+  lb_ac:{l:'lb N/ac',toK:v=>v*1.12085,frK:v=>v/1.12085,pl:'N ($/lb N)',mn:0.05,mx:2.50,st:0.01,df:0.55,nt:'1 lb N/ac ≈ 1.121 kg N/ha'},
+  kg_ha:{l:'kg N/ha',toK:v=>v,         frK:v=>v,         pl:'N ($/kg N)',mn:0.10,mx:5.00,st:0.05,df:1.20,nt:''},
+};
+const DEF=[{N:0,y:3.68},{N:56,y:4.62},{N:112,y:5.33},{N:168,y:5.66},{N:224,y:5.79},{N:280,y:5.79}];
+let pts=DEF.map(d=>({...d})),yu='bu_ac',nu='lb_ac',ch;
+
+function setY(u){
+  yu=u;
+  document.querySelectorAll('#ytog .ubtn').forEach(b=>b.classList.toggle('on',b.dataset.yu===u));
+  const y=YU[u],c=document.getElementById('cp');
+  c.min=y.mn;c.max=y.mx;c.step=y.st;c.value=y.df;
+  updS(c,y.mn,y.mx);document.getElementById('cpl').textContent=y.pl;
+  conv();tbl();upd();
+}
+function setN(u){
+  nu=u;
+  document.querySelectorAll('#ntog .ubtn').forEach(b=>b.classList.toggle('on',b.dataset.nu===u));
+  const n=NU[u],s=document.getElementById('np');
+  s.min=n.mn;s.max=n.mx;s.step=n.st;s.value=n.df;
+  updS(s,n.mn,n.mx);document.getElementById('npl').textContent=n.pl;
+  ['s-eu','s-au'].forEach(id=>document.getElementById(id).textContent=n.l);
+  document.getElementById('nn').placeholder='N ('+n.l+')';
+  conv();tbl();upd();
+}
+function conv(){
+  const ns=[YU[yu].nt,NU[nu].nt].filter(Boolean);
+  document.getElementById('convbox').innerHTML=ns.map(n=>'→ '+n).join(' · ')||'&nbsp;';
+  ['s-yu','s-pu'].forEach(id=>document.getElementById(id).textContent=YU[yu].l);
+  document.getElementById('ny').placeholder='Yield ('+YU[yu].l+')';
+}
+function ols(d){
+  const n=d.length;let sx=0,sx2=0,sx3=0,sx4=0,sy=0,sxy=0,sx2y=0;
+  for(const{N,y}of d){sx+=N;sx2+=N*N;sx3=sx3+N**3;sx4=sx4+N**4;sy+=y;sxy+=N*y;sx2y+=N*N*y;}
+  return s3([[n,sx,sx2],[sx,sx2,sx3],[sx2,sx3,sx4]],[sy,sxy,sx2y]);
+}
+function s3([[a0,a1,a2],[b0,b1,b2],[c0,c1,c2]],[d0,d1,d2]){
+  const dt=a0*(b1*c2-b2*c1)-a1*(b0*c2-b2*c0)+a2*(b0*c1-b1*c0);
+  if(Math.abs(dt)<1e-12)return[0,0,0];
+  return[(d0*(b1*c2-b2*c1)-a1*(d1*c2-b2*d2)+a2*(d1*c1-b1*d2))/dt,
+         (a0*(d1*c2-b2*d2)-d0*(b0*c2-b2*c0)+a2*(b0*d2-d1*c0))/dt,
+         (a0*(b1*d2-d1*c1)-a1*(b0*d2-d1*c0)+d0*(b0*c1-b1*c0))/dt];
+}
+function qp(N,a,b,c,j){return N>=j?a+b*j+c*j*j:a+b*N+c*N*N;}
+function r2(d,a,b,c,j){
+  const m=d.reduce((s,x)=>s+x.y,0)/d.length;
+  return 1-d.reduce((s,x)=>s+(x.y-qp(x.N,a,b,c,j))**2,0)/d.reduce((s,x)=>s+(x.y-m)**2,0);
+}
+function updS(el,mn,mx){el.style.setProperty('--pct',((el.value-mn)/(mx-mn)*100)+'%');}
+
+function tbl(){
+  const y=YU[yu],n=NU[nu];
+  document.getElementById('dtable').innerHTML=pts.map((p,i)=>`
+    <div class="drow">
+      <span>${n.frK(p.N).toFixed(1)} ${n.l}</span>
+      <span>${y.frM(p.y).toFixed(1)} ${y.l}</span>
+      <button class="bdel" onclick="delPt(${i})">×</button>
+    </div>`).join('');
+}
+function delPt(i){pts.splice(i,1);tbl();upd();}
+function addPt(){
+  const y=YU[yu],n=NU[nu];
+  const nv=parseFloat(document.getElementById('nn').value);
+  const yv=parseFloat(document.getElementById('ny').value);
+  if(isNaN(nv)||isNaN(yv))return;
+  pts.push({N:n.toK(nv),y:y.toM(yv)});pts.sort((a,b)=>a.N-b.N);
+  document.getElementById('nn').value='';document.getElementById('ny').value='';
+  tbl();upd();
+}
+function resetD(){pts=DEF.map(d=>({...d}));tbl();upd();}
+
+function upd(){
+  const y=YU[yu],n=NU[nu];
+  const nP=+document.getElementById('np').value,cP=+document.getElementById('cp').value;
+  document.getElementById('npo').textContent='$'+nP.toFixed(2);
+  document.getElementById('cpo').textContent='$'+cP.toFixed(2);
+  const ratio=(nP/n.toK(1))/(cP/y.toM(1));
+  document.getElementById('pr').textContent=ratio.toFixed(4);
+
+  const w=document.getElementById('warn');
+  if(pts.length<3){w.style.display='block';w.textContent='Need ≥ 3 data points.';return;}
+  const[a,b,c]=ols(pts);
+  if(c>=0){w.style.display='block';w.textContent='⚠ No diminishing returns detected — check data.';}
+  else w.style.display='none';
+
+  const j=-b/(2*c),py=a+b*j+c*j*j;
+  const E=Math.min(Math.max((ratio-b)/(2*c),0),j),yE=qp(E,a,b,c,j),R=r2(pts,a,b,c,j);
+  const gb=-1/(2*c),gc=-(ratio-b)/(2*c*c);
+  const se=Math.sqrt((gb*Math.abs(b)*0.05)**2+(gc*Math.abs(c)*0.08)**2);
+  const clo=Math.max(E-2*se,0),chi=Math.min(E+2*se,j);
+
+  document.getElementById('s-eonr').textContent=n.frK(E).toFixed(1);
+  document.getElementById('s-ye').textContent=y.frM(yE).toFixed(1);
+  document.getElementById('s-aonr').textContent=n.frK(j).toFixed(1);
+  document.getElementById('s-plat').textContent=y.frM(py).toFixed(1);
+  document.getElementById('s-ci').textContent='['+n.frK(clo).toFixed(1)+','+n.frK(chi).toFixed(1)+']';
+  document.getElementById('r2').textContent=R.toFixed(3);
+  document.getElementById('ca').textContent=a.toFixed(3);
+  document.getElementById('cb').textContent=b.toFixed(5);
+  document.getElementById('cc').textContent=c.toFixed(6);
+
+  const mxN=Math.max(...pts.map(p=>p.N))*1.15,xs=[],ys=[];
+  for(let N=0;N<=mxN;N+=0.5){xs.push(n.frK(N));ys.push(y.frM(qp(N,a,b,c,j)));}
+  const ed=n.frK(E),yd=y.frM(yE),jd=n.frK(j),cld=n.frK(clo),chd=n.frK(chi);
+
+  if(ch)ch.destroy();
+  ch=new Chart(document.getElementById('chart'),{
+    data:{datasets:[
+      {type:'line',data:xs.map((x,i)=>({x,y:ys[i]})),borderColor:'#1E6B3A',borderWidth:2.2,pointRadius:0,tension:0,order:3},
+      {type:'scatter',data:pts.map(p=>({x:n.frK(p.N),y:y.frM(p.y)})),backgroundColor:'#fff',borderColor:'#0A2215',borderWidth:1.5,pointRadius:4,order:2},
+      {type:'scatter',data:[{x:ed,y:yd}],backgroundColor:'#F5C518',borderColor:'#0A2215',borderWidth:1.2,pointRadius:6,pointStyle:'rectRot',order:1},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw.y.toFixed(1)} ${y.l} @ ${ctx.raw.x.toFixed(1)} ${n.l}`}}},
+      scales:{
+        x:{type:'linear',title:{display:true,text:`N rate (${n.l})`,color:'#5A856A',font:{size:10}},ticks:{color:'#5A856A',font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'},border:{color:'#C0D8C6'}},
+        y:{title:{display:true,text:`Yield (${y.l})`,color:'#5A856A',font:{size:10}},ticks:{color:'#5A856A',font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'},border:{color:'#C0D8C6'}},
+      }
+    },
+    plugins:[{id:'vl',afterDraw(c){
+      const x=c.ctx,xS=c.scales.x,yS=c.scales.y;
+      x.save();
+      x.fillStyle='rgba(245,197,24,0.09)';
+      x.fillRect(xS.getPixelForValue(cld),yS.top,xS.getPixelForValue(chd)-xS.getPixelForValue(cld),yS.bottom-yS.top);
+      x.beginPath();x.strokeStyle='#6B8F71';x.lineWidth=1;x.setLineDash([4,3]);
+      x.moveTo(xS.getPixelForValue(jd),yS.top);x.lineTo(xS.getPixelForValue(jd),yS.bottom);x.stroke();
+      x.beginPath();x.strokeStyle='#D4A800';x.lineWidth=1.6;x.setLineDash([5,3]);
+      x.moveTo(xS.getPixelForValue(ed),yS.top);x.lineTo(xS.getPixelForValue(ed),yS.bottom);x.stroke();
+      x.setLineDash([]);x.restore();
+    }}]
+  });
+}
+
+updS(document.getElementById('np'),0.05,2.50);
+updS(document.getElementById('cp'),1,10);
+conv();tbl();upd();
+</script>
+</body>
+</html>
